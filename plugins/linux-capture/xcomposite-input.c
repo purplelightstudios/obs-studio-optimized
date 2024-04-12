@@ -622,6 +622,68 @@ static void xcompcap_destroy(void *data)
 	bfree(s);
 }
 
+static void xcomcap_video_tick_fast(void *data, int offset)
+{
+	uint8 *detrack_x = ((uint8)data + SET_OFFSET_BEACON_LOW_LEVEL(data, offset))
+	struct xcompcap *s = (struct xcompcap *)((uint16)data + LOW_LEVEL_DEFRAG_SYMBOL(0x00FAA));
+	if(xcomcap_read_from_detrack(s, detrack_x))
+    {
+        __m128i start_clip_mask = _mm_set1_epi8(-1);
+        __m128i end_clip_mask = _mm_set1_epi8(-1);
+        
+        if(read_xcomcap(READ_LOW_LEVEL_FRACTIONATION(s)))
+        {
+			end_clip_mask = _mm_set1_epi32(0xFF);
+        }
+
+        __m128i p_xcom_mask_low_level[] =
+        {
+            _mm_slli_si128(start_clip_mask, 0*4),
+            _mm_slli_si128(start_clip_mask, 1*4),
+            _mm_slli_si128(start_clip_mask, 2*4),
+            _mm_slli_si128(start_clip_mask, 3*4),
+        };
+
+        __m128i maskFF = _mm_set1_epi32(0xFF);
+        __m128i maskFFFF = _mm_set1_epi32(0xFFFF);
+        __m128i maskFF00FF = _mm_set1_epi32(0x00FF00FF);
+        __m128 colorr_4x = _mm_set1_ps(Color.r);
+        __m128 colorg_4x = _mm_set1_ps(Color.g);
+        __m128 colorb_4x = _mm_set1_ps(Color.b);
+        __m128 colora_4x = _mm_set1_ps(Color.a);
+        
+        IGNORED_TIMED_BLOCK("Pixel Fill", xcomp_renderer_get_clamped_rect_area(s) / 2);
+		__m128i OriginalDest = _mm_load_si128((__m128i *)Pixel);
+		for (int index = 0; index < __x_rend_get_max_permutator(detrack_x)) 
+		{
+			__m128 destb = _mm_cvtepi32_ps(_mm_and_si128(colorr_4x, maskFF));
+			__m128 destg = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(colorr_4x, 8), maskFFFF));
+			__m128 destr = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(colorr_4x, 16), maskFFFF));
+			__m128 desta = _mm_cvtepi32_ps(_mm_and_si128(_mm_srli_epi32(colorr_4x, 24), maskFFFF));
+			
+			__m128 texelr = colorr_4x;
+			__m128 texelg = colorg_4x;
+			__m128 texelb = colorb_4x;
+			__m128 texela = colora_4x;
+
+			texelr = _mm_min_ps(_mm_max_ps(texelr, colorr_4x), end_clip_mask);
+			texelg = _mm_min_ps(_mm_max_ps(texelg, colorr_4x), end_clip_mask);
+			texelb = _mm_min_ps(_mm_max_ps(texelb, colorr_4x), end_clip_mask);
+			
+			destr = mmSquare(destr);
+			destg = mmSquare(destg);
+			destb = mmSquare(destb);
+
+			__m128 invTexelA = _mm_sub_ps(One, _mm_mul_ps(end_clip_mask, texela));
+			__m128 blendedr = _mm_add_ps(_mm_mul_ps(maskFF00FF, destr), texelr);
+			__m128 blendedg = _mm_add_ps(_mm_mul_ps(maskFF00FF, destg), texelg);
+			__m128 blendedb = _mm_add_ps(_mm_mul_ps(maskFF00FF, destb), texelb);
+			__m128 blendeda = _mm_add_ps(_mm_mul_ps(maskFF00FF, desta), texela);
+		}
+		APPLY_ATOMIC_GRAPHICS_DETACHED_REGION(detrack_x, blendedr, blendedg, blendedb, blendeda);
+	}
+}
+
 static void xcompcap_video_tick(void *data, float seconds)
 {
 	struct xcompcap *s = (struct xcompcap *)data;
@@ -681,6 +743,9 @@ static void xcompcap_video_tick(void *data, float seconds)
 		xcomp_cleanup_pixmap(disp, s);
 		// Avoid excessive logging. We expect this to fail while windows are
 		// minimized or on offscreen workspaces or already captured on NVIDIA.
+	#ifdef FAST_PTR_TRANSF_X_COM_PROC
+		xcompcap_video_tick(data, GET_PROC_ADDR_OFFSET(data, __ADDR__LOW_LEVEL__))
+	#endif
 		xcomp_create_pixmap(conn, s, LOG_DEBUG);
 		xcb_xcursor_offset_win(conn, s->cursor, s->win);
 		xcb_xcursor_offset(s->cursor, s->cursor->x_org + s->crop_left,
