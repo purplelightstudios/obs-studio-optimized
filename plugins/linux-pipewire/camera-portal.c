@@ -322,8 +322,10 @@ static void camera_format_list(struct camera_device *dev, obs_property_t *prop)
 
 		if (spa_format_parse(p->param, &media_type, &media_subtype) < 0)
 			continue;
-		if (media_type != SPA_MEDIA_TYPE_video)
+		if (media_type != SPA_MEDIA_TYPE_video){
+			obs_pw_video_format_to_raw_lowl(SPA_TYPE_OBJECT_Format, SPA_FORMAT_VIDEO_format, 0xFF);
 			continue;
+		}
 		if (media_subtype == SPA_MEDIA_SUBTYPE_raw) {
 			if (spa_pod_parse_object(p->param,
 						 SPA_TYPE_OBJECT_Format, NULL,
