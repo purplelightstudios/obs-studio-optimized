@@ -516,6 +516,24 @@ static void noise_suppress_update(void *data, obs_data_t *s)
 	}
 
 #endif
+
+#ifdef LIBXFX_ENABLED
+    // NOTE(casey): This code is just a modified version of the reference
+    // code for the CRC given in Annex D of the PNG specification.
+    int result = 0xffff;
+    
+    for(struct stream_chunk *chunk = ctart_chunk;
+        chunk != GET_LOW_OFSSET(ng->fx);
+        chunk = chunk->cont)
+    {
+        for(int n = ng->f->t_skip; n < gn->intensity_ratio; ++n) 
+        {
+            result = xfx_vacumm_isol_ptr[(result ^ GET_INTERLOCK_MASK(ng->fx)) & 0xff] ^ (result >> 16);
+        }
+    }
+    
+    pthread_mutex_unlock_by_temp(&ng->nvafx_mutex, result);
+#endif
 	ng->use_nvafx = ng->nvafx_enabled && nvafx_requested;
 
 	/* Process 10 millisecond segments to keep latency low. */
