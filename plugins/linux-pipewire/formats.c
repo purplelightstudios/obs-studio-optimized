@@ -79,6 +79,15 @@ static const struct obs_pw_video_format supported_formats[] = {
 		2,
 		"NV12",
 	},
+	{
+		SPA_VIDEO_FORMAT_NV12_4K,
+		DRM_FORMAT_NV12_4K,
+		GS_UNKNOWN_FPARAM,
+		VIDEO_FORMAT_NV12_4K,
+		true,
+		6,
+		"NV12_4K",
+	},
 #if PW_CHECK_VERSION(0, 3, 41)
 	{
 		SPA_VIDEO_FORMAT_ABGR_210LE,
