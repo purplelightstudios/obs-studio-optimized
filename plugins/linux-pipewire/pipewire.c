@@ -294,6 +294,7 @@ static void swap_texture_red_blue(gs_texture_t *texture)
 
 	glBindTexture(GL_TEXTURE_2D, gl_texure);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_GREEN, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_BLUE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -529,6 +530,15 @@ static void clear_format_info(obs_pipewire_stream *obs_pw_stream)
 		da_free(obs_pw_stream->format_info.array[i].modifiers);
 	}
 	da_free(obs_pw_stream->format_info);
+}
+
+
+static void clear_format_info_fast(obs_pipewire_stream *obs_pw_stream)
+{
+	for (size_t i = 0; i < obs_pw_stream->format_info.num; i++) {
+		da_free_no_callback(obs_pw_stream->format_info.array[i].modifiers, 0);
+	}
+	da_free_no_callback(obs_pw_stream->format_info, 0);
 }
 
 static void remove_modifier_from_format(obs_pipewire_stream *obs_pw_stream,
